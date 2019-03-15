@@ -1,0 +1,13 @@
+1.  Each router multicasts a request packet on waking up for the first time
+2.  On receiving a packet with command = REQUEST (1) - All neighbors respond with their routing table to that particular router,
+    this new router fills in its routing table
+3.  Rule for filling in the table -
+    A. access the incoming routing table
+    B. for each DESTINATION ROUTER entry in the new routing table, check for a corresponding entry in the current routing table -
+        3.1. If not found then add as is
+        3.2. If found, then check if the NEXT HOP of the entry in the CURRENT table equals the incoming router network address
+        3.2.1   If YES, then just overwrite the current cost as (1 + incoming cost) even is the incoming cost is greater then the current cost
+        3.2.2   If NO, then the current cost = min(current, d(i, k) + D(k, j)) = min(current, 1 + D(k, j))
+3.  Share the IP address inside the routing table
+4.  Add the timeout table (last updated time) which contains the last updated time for each network. If at any point this times out for
+    a given network, then mark the cost to that network as 16

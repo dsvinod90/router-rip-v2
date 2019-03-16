@@ -1,5 +1,5 @@
 /**
- * filename: @{@link helper.Helper}
+ * filename: @{@link Helper}
  *
  * author: @ishanguliani aka ig5859
  *
@@ -24,29 +24,66 @@ public class Helper {
          * Helper method that uses bitwise operators to perform
          * manipulation to convert a byte to its hexadecimal representation
          * @param b the input byte
+         * @param base the base of the returned hex string
          * @return  the converted hex
          */
-        public static String convertByteToHex(byte b)    {
+        public static String convertByteToHex(byte b, int base) {
             StringBuilder fullHex = new StringBuilder();
-
-            // logical right shift bits by 4 places
-            // this allows us to obtain the most significant
-            // half of the corresponding byte
-            int hex = (b >>> 4) & 0x0F;
-
-            for( int i = 0; i < 2; i++) {
-                if(hex <= 9)
-                    fullHex.append((char)('0' + hex));
-                else
-                    fullHex.append((char)('a' + (hex-10)));
-
-                // update the hex to consider the least significant
+            if(base == 16) {
+                // logical right shift bits by 12 places
+                // this allows us to obtain the most significant
                 // half of the corresponding byte
-                hex = b & 0x0F;
+                int hex = (b >>> 12) & 0x000F;
+                int shift = 8;
+                for (int i = 0; i < 4; i++) {
+                    if (hex <= 9) fullHex.append((char) ('0' + hex));
+                    else fullHex.append((char) ('a' + (hex - 10)));
+                    // update the hex to consider the least significant
+                    // half of the remaining byte
+                    hex = (b >>> shift) & 0x000F;
+                    shift -= 4;
+                }
+            }else   {
+                // logical right shift bits by 4 places
+                // this allows us to obtain the most significant
+                // half of the corresponding byte
+                int hex = (b >>> 4) & 0x0F;
+                for( int i = 0; i < 2; i++) {
+                    if(hex <= 9)    fullHex.append((char)('0' + hex));
+                    else    fullHex.append((char)('a' + (hex-10)));
+                    // update the hex to consider the least significant
+                    // half of the corresponding byte
+                    hex = b & 0x0F;
+                }
             }
             return fullHex.toString();
         }
 
+        public static String convertByteToHex(byte b) {
+            StringBuilder fullHex = new StringBuilder();
+            // logical right shift bits by 4 places
+            // this allows us to obtain the most significant
+            // half of the corresponding byte
+            int hex = (b >>> 4) & 0x0F;
+            for( int i = 0; i < 2; i++) {
+                if(hex <= 9)    fullHex.append((char)('0' + hex));
+                else    fullHex.append((char)('a' + (hex-10)));
+                // update the hex to consider the least significant
+                // half of the corresponding byte
+                hex = b & 0x0F;
+
+            }
+            return fullHex.toString();
+        }
+
+        /***
+         * Return the Integer equivalent of the given hex string
+         * @param hex
+         * @return
+         */
+        public static Integer convertHexToInteger(String hex)   {
+            return Integer.parseInt(hex.toString(), 16);
+        }
         /**
          * Return decimal equivalent of the given byte of data
          * @param b the byte to be processed using bitwise operations
@@ -66,6 +103,22 @@ public class Helper {
             return (byte)((b & 127) - (b & ~127));
         }
 
+
+        /**
+         * Return the byte equivalent of a given decimal (string)
+         * @param s the string
+         * @return
+         */
+        public static byte convertIntegerToByte(String s)  {
+            return (byte)Integer.parseInt(s, 10);
+        }
+    }
+
+    /**
+     * Parse sender address
+     */
+    public static String parseSenderAddress(String sender)  {
+        return "10.0." + sender + ".0";
     }
 
 

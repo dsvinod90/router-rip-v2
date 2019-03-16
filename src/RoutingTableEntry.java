@@ -1,15 +1,18 @@
 import java.io.Serializable;
 
 public class RoutingTableEntry implements Serializable {
-    public static final String ADDRESS_FAMILY_IP = "2"; // 2 for IP
-    private String addressFamilyIdentifier;
-    private String routeTag;
+    public static final int ADDRESS_FAMILY_IP = 2; // 2 for IP
+    public static final String SUBNET_MASK = "255.255.255.0"; // 2 for IP
+
+    public static final int ROUTE_TAG = 1; // 2 for IP
+    private int addressFamilyIdentifier;
+    private int routeTag;
     private String address;
     private String subnetMask;
     private String nextHop;
-    private Integer metric;
+    private int metric;
 
-    public RoutingTableEntry(String addressFamilyIdentifier, String routeTag, String address, String subnetMask, String nextHop, Integer metric) {
+    public RoutingTableEntry(int addressFamilyIdentifier, int routeTag, String address, String subnetMask, String nextHop, int metric) {
         this.addressFamilyIdentifier = addressFamilyIdentifier;
         this.routeTag = routeTag;
         this.address = address;
@@ -18,19 +21,19 @@ public class RoutingTableEntry implements Serializable {
         this.metric = metric;
     }
 
-    public String getAddressFamilyIdentifier() {
+    public int getAddressFamilyIdentifier() {
         return addressFamilyIdentifier;
     }
 
-    public void setAddressFamilyIdentifier(String addressFamilyIdentifier) {
+    public void setAddressFamilyIdentifier(int addressFamilyIdentifier) {
         this.addressFamilyIdentifier = addressFamilyIdentifier;
     }
 
-    public String getRouteTag() {
+    public int getRouteTag() {
         return routeTag;
     }
 
-    public void setRouteTag(String routeTag) {
+    public void setRouteTag(int routeTag) {
         this.routeTag = routeTag;
     }
 
@@ -58,11 +61,11 @@ public class RoutingTableEntry implements Serializable {
         this.nextHop = nextHop;
     }
 
-    public Integer getMetric() {
+    public int getMetric() {
         return metric;
     }
 
-    public void setMetric(Integer metric) {
+    public void setMetric(int metric) {
         this.metric = metric;
     }
 

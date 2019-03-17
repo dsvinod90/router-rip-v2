@@ -1,3 +1,22 @@
+/**
+ * {@link MyThreadPoolExecutorService}
+ *
+ * @version:
+ *      1.0.2
+ *
+ * @revision:
+ *      4
+ *
+ * @author:
+ *      ishanguliani aka ig5859
+ */
+
+/**
+ * An API to effectively manage all thread synchronization across
+ * the whole project. Each thread leverages a shared instance of
+ * {@link MyThreadPoolExecutorService} to execute
+ */
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 

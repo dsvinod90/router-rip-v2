@@ -16,14 +16,6 @@
  */
 public class Log {
     public static void router(String message) {
-        System.out.println( "Router: " + message );
-    }
-
-    public static void client(String message) {
-        System.out.println( "Client: " + message );
-    }
-
-    public static void network(String s)  {
-        System.out.println( "Network: " + s );
+        System.out.println( "Rover: " + message );
     }
 }

@@ -1,5 +1,5 @@
 /**
- * RouterProcess.java
+ * {@link RouterProcess}
  *
  * @version:
  *      1.0.1
@@ -15,11 +15,9 @@
 import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 
 /**
  * A running Router Process performs the following tasks -
@@ -56,7 +54,7 @@ public class RouterProcess {
             RoverManager.getInstance()
                     .getMyThreadPoolExecutorService()
                     .getService()
-                    .execute(new MainRouterThread(multicastIp, port));
+                    .execute(new MainRouterProcess(multicastIp, port));
         }catch(ArrayIndexOutOfBoundsException ex){
             ex.printStackTrace();
             System.out.println("Please enter arguments as <multicast_ip> <unique_router_id> <port_number>");
@@ -68,7 +66,7 @@ public class RouterProcess {
  * The main server logic that listens to client
  * requests on a port number and serves them as needed
  */
-class MainRouterThread extends Thread{
+class MainRouterProcess extends Thread{
     // the routing table
     private RIPPacket mRIPPacket = RoverManager.getInstance().getmRIPPacket();
     private String multicastIp;
@@ -78,7 +76,7 @@ class MainRouterThread extends Thread{
     /**
      * Constructor opens a server socket and listens
      */
-    public MainRouterThread(String multicastIp, String port)   {
+    public MainRouterProcess(String multicastIp, String port)   {
         this.multicastIp = multicastIp;
         ROUTER_PORT = Integer.parseInt(port);
         try {

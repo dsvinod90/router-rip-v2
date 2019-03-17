@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *  2.  The lander is in the vicinity of at least one rover at any given point of time
  *  3.  For simplicity, the mustBeZero field of the RIP packet is used to transmit the unique
  *      router id between routers
+ *  4.  A lander is just another rover
  *
  *  EXECUTING:
  *  1.  java RouterProcess <multicast_ip> <unique_router_id> <port_number>
@@ -56,8 +57,7 @@ public class RouterProcess {
                     .getService()
                     .execute(new MainRouterProcess(multicastIp, port));
         }catch(ArrayIndexOutOfBoundsException ex){
-            ex.printStackTrace();
-            System.out.println("Please enter arguments as <multicast_ip> <id> <port>");
+            System.out.println("Please enter arguments as <multicast_ip> <id> <port>. Please refer to README.txt for reference.");
         }
     }
 }
@@ -366,23 +366,24 @@ class ParseReceivedPacketProcess extends Thread {
                     if(myEntry.getNextHop().equalsIgnoreCase(receivedRIPPacket.getSender()))  {
                         // trust the incoming packet blindly
                         // overwrite the metric current instance for this entry
-                        if(incomingEntry.getMetric() == RIPPacket.METRIC_UNREACHABLE)  {
+                        if(1+incomingEntry.getMetric() >= RIPPacket.METRIC_UNREACHABLE)   {
                             myEntry.setMetric(RIPPacket.METRIC_UNREACHABLE);
-                        }else {
+                        } else {
                             myEntry.setMetric(1 + incomingEntry.getMetric());
-                            hasRoutingTableChanged = true;
-                            Log.router(RoverManager.getInstance().getFullRoverId() + " changed 1");
                         }
+                        hasRoutingTableChanged = true;
                     }else   {
                         // find the better one of the two options
-                        if((1+incomingEntry.getMetric()) < myEntry.getMetric())  {
+                        if(incomingEntry.getMetric() >= RIPPacket.METRIC_UNREACHABLE)   {
+                            myEntry.setMetric(RIPPacket.METRIC_UNREACHABLE);
+                        }
+                        else if((1+incomingEntry.getMetric()) < myEntry.getMetric())  {
                             // incoming is better, time to update the current entry
                             myEntry.setMetric(1+incomingEntry.getMetric());
                             // update the next hop to this new client
                             myEntry.setNextHop(receivedRIPPacket.getSender());
                             // mark as changed
                             hasRoutingTableChanged = true;
-                            Log.router(RoverManager.getInstance().getFullRoverId() + " changed 2");
                         }
                     }
                 }

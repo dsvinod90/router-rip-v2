@@ -1,33 +1,30 @@
-PROGRAM = program
-CLASS = classes
+ROVER = rover
+NASA = nasa
 MAKEDIR = directory
 MAINFILE = main
 
-$(PROGRAM): $(CLASS)
+$(ROVER):
 	@echo "Running the executable..."
 	@echo "-------------------"
 	@cd classes && java RouterProcess $(multicast_ip) $(id) $(port)
 
-$(CLASS): $(MAKEDIR)
-	@echo "compiling java files..."
-	@echo "compilation completed without errors!"
-	@echo "all class files copied to ./classes directory!"
+$(NASA): $(MAKEDIR)
+	@echo "compiling program... compilation completed without errors!"
+	@echo "You are ready to deploy rovers to the moon!"
+	@echo "To deploy your first rover now, run 'make rover multicast_ip=224.0.0.9 id=1 port=4445' "
+	@echo "----------------------"
 	@javac -d classes RouterProcess.java
 
-all: $(PROGRAM)
+all: $(ROVER)
 	@echo "executing program..."
 
 clean:
-	@echo "cleaning all .class files in the classes directory..."
 	@rm -rf classes ||:
-	@echo "cleaned successfully!"
+	@echo "Setting up communication protocols..."
 
 $(MAKEDIR): $(MAINFILE) clean
-	@echo "Creating directory 'classes' in the current directory..."
+	@echo "Creating buffer directories for intermediate storage 'classes'..."
 
 $(MAINFILE): RouterProcess.java
-	@echo "----Beginning make program------"
-	@echo "Sample execution: Fire up a router process:  $$ make program multicast_ip=224.0.0.9 id=1 port=4445"
+	@echo "Analyzing moon surface for rover deployment..."
 	@echo "--------------------"
-	@echo "Preparing directory for execution"
-	@echo "Looking for RouterProcess.java..."

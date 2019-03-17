@@ -9,11 +9,10 @@
  *
  * @author:
  *      ishanguliani aka ig5859
- *      saurabhgaikwad
  */
 
 /**
- * A helper API to effectively lof Client and server events as needed.
+ * A helper API to effectively log events from the router activities
  */
 public class Log {
     public static void router(String message) {

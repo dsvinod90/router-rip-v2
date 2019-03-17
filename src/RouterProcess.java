@@ -325,35 +325,50 @@ class ParseReceivedPacketProcess extends Thread {
     private void updateMyRoutingTable(RIPPacket receivedRIPPacket) {
 
         // check if there is an entry for this neighbor network itself
-        boolean neighborExistsInRoutingTable = false;
+//        boolean neighborExistsInRoutingTable = false;
+
+        boolean hasRoutingTableChanged = false;
+        boolean isThisSenderInMyTable = false;
         for(RoutingTableEntry myEntry: mRIPPacket.getmList()) {
             if(myEntry.getAddress().equalsIgnoreCase(receivedRIPPacket.getSender()))  {
-                neighborExistsInRoutingTable = true;
+                isThisSenderInMyTable = true;
+//                System.out.println("SOME match found : pre existing entry for that sender");
+//                neighborExistsInRoutingTable = true;
+                // now this sender is in my own routing table and also is talking to me directly,
+                // hence update the current routing table
+                // Check if the next hop to go to this sender is itself, if yes. ALL GOOD else update
+                // the next hop to the sender and the metric to 1 (to denote direct connection)
+                if(!myEntry.getNextHop().equalsIgnoreCase(receivedRIPPacket.getSender()))   {
+                    System.out.println("SOME match found : pre existing entry for that sender");
+                    // update
+                    myEntry.setNextHop(receivedRIPPacket.getSender());
+                    myEntry.setMetric(1);
+                    hasRoutingTableChanged = true;
+                }
             }
         }
 
         // if my routing table is empty, then just add this neighbor rover
-        if((mRIPPacket.getmList().size() == 0) || (!neighborExistsInRoutingTable))   {
+//        if((mRIPPacket.getmList().size() == 0) || (!neighborExistsInRoutingTable))   {
+        if((mRIPPacket.getmList().size() == 0) || !isThisSenderInMyTable)   {
             mRIPPacket.getmList().add(new RoutingTableEntry(RoutingTableEntry.ADDRESS_FAMILY_IP
                     , RoutingTableEntry.ROUTE_TAG
                     , receivedRIPPacket.getSender()
                     , RoutingTableEntry.SUBNET_MASK
                     , receivedRIPPacket.getSender()
                     , 1));
-
-            mRIPPacket.print();
+            hasRoutingTableChanged = true;
         }
 
-        boolean changed = false;
         // go over each entry in the incoming table
         for(RoutingTableEntry incomingEntry: receivedRIPPacket.getmList())  {
             // check if the destination address of this entry
             // matches with the destination address of any entry in the current table
-            boolean matches = false;
+            boolean isMatchFound = false;
             for(RoutingTableEntry myEntry: mRIPPacket.getmList())    {
                 if(myEntry.getAddress().equalsIgnoreCase(incomingEntry.getAddress()))    {
-                    System.out.println("updateMyRoutingTable: Entry" +  incomingEntry.getAddress() + " exists in my table");
-                    matches = true;
+//                    System.out.println("updateMyRoutingTable: Entry" +  incomingEntry.getAddress() + " exists in my table");
+                    isMatchFound = true;
                     // if the entry already matches some entry in the current table then some cases arise
                     // Check if the NEXT HOP of the entry in the CURRENT table
                     // equals the incoming router network address
@@ -364,7 +379,7 @@ class ParseReceivedPacketProcess extends Thread {
                             myEntry.setMetric(RIPPacket.METRIC_UNREACHABLE);
                         }else {
                             myEntry.setMetric(1 + incomingEntry.getMetric());
-                            changed = true;
+                            hasRoutingTableChanged = true;
                             Log.router(RoverManager.getInstance().getFullRoverId() + " changed 1");
                         }
                     }else   {
@@ -375,7 +390,7 @@ class ParseReceivedPacketProcess extends Thread {
                             // update the next hop to this new client
                             myEntry.setNextHop(receivedRIPPacket.getSender());
                             // mark as changed
-                            changed = true;
+                            hasRoutingTableChanged = true;
                             Log.router(RoverManager.getInstance().getFullRoverId() + " changed 2");
                         }
                     }
@@ -385,13 +400,19 @@ class ParseReceivedPacketProcess extends Thread {
             // address has no mention in the router's own routing table
             // hence we can just add this to the current routing table
             // also ensure that this address is not the same as my own address
-            if(!matches && !incomingEntry.getAddress().equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
-                System.out.println("ADDED TO TABLE : " + incomingEntry.getAddress() + ", " + incomingEntry.getNextHop() + ", " + incomingEntry.getMetric());
-                mRIPPacket.getmList().add(incomingEntry);
+            if(!isMatchFound && !incomingEntry.getAddress().equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
+                System.out.println("ADDED TO TABLE : " + incomingEntry.getAddress() + ", " + receivedRIPPacket.getSender() + ", " + (1+incomingEntry.getMetric()));
+                mRIPPacket.getmList().add(new RoutingTableEntry(RoutingTableEntry.ADDRESS_FAMILY_IP
+                        , RoutingTableEntry.ROUTE_TAG
+                        , incomingEntry.getAddress()
+                        , RoutingTableEntry.SUBNET_MASK
+                        , receivedRIPPacket.getSender()
+                        , (1+incomingEntry.getMetric())));
+                hasRoutingTableChanged = true;
             }
         }
 
-        if(changed) {
+        if(hasRoutingTableChanged) {
             mRIPPacket.print();
         }
     }
@@ -450,6 +471,10 @@ class TimeoutManagementProcess extends Thread {
                     if((currentTime - entry.getValue()) > 10)   {
                         // mark the neighboring rover as dead
                         RoverManager.getInstance().getmRIPPacket().markAsDead(entry.getKey());
+                        // print the new table
+                        RoverManager.getInstance().getmRIPPacket().print();
+                        // remove this entry from the hashmap
+                        this.timeoutTable.remove(entry.getKey());
                     }
                 }
             } catch (Exception ex) {

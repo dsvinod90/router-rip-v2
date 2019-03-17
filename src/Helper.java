@@ -1,15 +1,18 @@
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 /**
  * filename: @{@link Helper}
  *
  * author: @ishanguliani aka ig5859
  *
- * version:     1
+ * version:     1.0.1
  *
- * revision:    1
+ * revision:    3
  *
  * description:
- * A helper class to provide frequently utilised bitwise operations like
- * converting a byte to hex code or converting a byte to decimal
+ * A helper class to provide
+ * 1. frequently utilised bitwise operations like converting a byte to hex code or converting a byte to decimal
+ * 2. Helper functions to parse CIDR addressing
  */
 
 public class Helper {
@@ -119,6 +122,62 @@ public class Helper {
      */
     public static String parseSenderAddress(String sender)  {
         return "10.0." + sender + ".0";
+    }
+
+ /*   public static String parseCIDR(String ip, String subnet)    {
+        String[] s = subnet.split("(\\.)");
+        for(String el: s)   {
+            System.out.println(el + ",");
+        }
+        int classA = Integer.parseInt(s[0]);
+        int classB = Integer.parseInt(s[1]);
+        int classC = Integer.parseInt(s[2]);
+        int classD = Integer.parseInt(s[3]);
+
+        System.out.println("classA: " + classA + ", classB: " + classB + ", classC: " + classC + ", classD: " + classD);
+        int howManyBytes = 0:
+        if(classA == 255) howManyBytes++;
+        if(classB == 255) howManyBytes++;
+        if(classC == 255) howManyBytes++;
+        if(classA == 255) howManyBytes++;
+
+        double noOfHostSubnets = (howManyBytes*8) + (8-Math.log(classD));
+        return ip + "/" + noOfHostSubnets;
+    }
+*/
+    public static String convertNetmaskToCIDR(String ip, String netmaskString){
+
+        InetAddress netmask = null;
+        try {
+            netmask = InetAddress.getByName(netmaskString);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        byte[] netmaskBytes = new byte[0];
+        if (netmask != null) {
+            netmaskBytes = netmask.getAddress();
+        }else   {
+            System.out.println("Netmask looks invalid");
+        }
+
+        int cidr = 0;
+        boolean zero = false;
+        for(byte b : netmaskBytes){
+            int mask = 0x80;
+
+            for(int i = 0; i < 8; i++){
+                int result = b & mask;
+                if(result == 0){
+                    zero = true;
+                }else if(zero){
+                    throw new IllegalArgumentException("Invalid netmask.");
+                } else {
+                    cidr++;
+                }
+                mask >>>= 1;
+            }
+        }
+        return ip + "/" + cidr;
     }
 
 

@@ -1,3 +1,20 @@
+/**
+ * {@link RIPPacket}
+ * @version:
+ *      1.0.1
+ *
+ * @revision:
+ *      1
+ *
+ * @author:
+ *      ishanguliani aka ig5859
+ */
+
+/**
+ * The model class responsible for the following -
+ * 1. Maintain a POJO model for RIP Packet
+ * 2.
+ */
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,23 +46,6 @@ public class RIPPacket {
         this.mList = mList;
         this.sender = sender;
 //        addDummyData();
-    }
-
-    private void addDummyData() {
-        this.command = COMMAND_REQUEST;
-        this.version = RIP_VERSION_2;
-        this.mustBeZero = "0";
-        /*
-         * private String addressFamilyIdentifier;
-         * private String routeTag;
-         * private String address;
-         * private String subnetMask;
-         * private String nextHop;
-         * private Integer metric;
-         * */
-        mList.add(new RoutingTableEntry(65535, ROUTER_TAG, "10.0.1.0", "255.255.255.0", "10.0.2.0", 15));
-        mList.add(new RoutingTableEntry(2, ROUTER_TAG, "10.0.2.0", "255.255.255.0", "10.0.2.0", 23));
-        mList.add(new RoutingTableEntry(2, ROUTER_TAG, "10.0.6.0", "255.255.255.0", "10.0.6.0", 10));
     }
 
     public String getCommand() {
@@ -115,15 +115,16 @@ public class RIPPacket {
         for(byte r: result) {
             System.out.println(r + ":");
         }*/
+//
+//        System.out.println(Long.parseLong("00" + "000" + "0", 16));
+//        long timestamp = System.currentTimeMillis() / 1000;
+//        System.out.println(timestamp);
+//        List<String> l = new ArrayList<>();
+//        System.out.println("LENGTH  = " + l.size());
 
-        System.out.println(Long.parseLong("00"
-                + "000" + "0", 16));
+//        System.out.println(Helper.parseCIDR("10.0.1.0", "255.255.255.0"));
+        System.out.println(Helper.convertNetmaskToCIDR("10.0.1.0", "255.255.255.0"));
 
-        long timestamp = System.currentTimeMillis() / 1000;
-        System.out.println(timestamp);
-
-        List<String> l = new ArrayList<>();
-        System.out.println("LENGTH  = " + l.size());
     }
 
     /**
@@ -229,16 +230,10 @@ public class RIPPacket {
         System.out.println("Address\t\tNextHop\t\tCost");
         System.out.println("===========================================");
         for(int i = 0; i < mList.size(); i++) {
-            System.out.println(mList.get(i).getAddress() + "/24" + "\t\t" + mList.get(i).getNextHop() + "\t\t" + mList.get(i).getMetric());
+            // get CIDR addressing from the given subnet mask
+            String CIDRString = Helper.convertNetmaskToCIDR(mList.get(i).getAddress(), mList.get(i).getSubnetMask());
+            System.out.println(CIDRString + "\t\t" + mList.get(i).getNextHop() + "\t\t" + mList.get(i).getMetric());
         }
-    }
-    /***
-     * Test method
-     * @param args
-     */
-    public static void main(String[] args) {
-//        new RIPPacket().toByteArray();
-        new RIPPacket().test();
     }
 
     /**
@@ -252,5 +247,15 @@ public class RIPPacket {
                 entry.setMetric(METRIC_UNREACHABLE);
             }
         }
+    }
+
+
+    /***
+     * Test method
+     * @param args
+     */
+    public static void main(String[] args) {
+        new RIPPacket().toByteArray(COMMAND_REQUEST);
+//        new RIPPacket().test();
     }
 }

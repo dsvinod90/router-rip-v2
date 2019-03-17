@@ -3,7 +3,7 @@ Full name   : Ishan Guliani
 Pen name    : ishanguliani
 Email       : ig5859@rit.edu
 
-Description:
+Project Description:
 Implementation of RIPv2 protocol from RFC 2453
 
 JAVA Files:
@@ -16,15 +16,15 @@ JAVA Files:
 7.  Helper
 
 How to execute -
-OPTION 1: If you have the 'make' program installed in your machine -
--> Fire up a new router process:
+OPTION 1: If you have the 'make' program installed in your machine. Here's how you can fire up a RouterProcess.
 $ make program multicast_ip=224.0.0.9 id=1 port=4445
+NOTE: The id has to be unique for each router process
 
 OPTION 2: If you do not have the 'make' program installed -
-$ rm -rf classes ||:	# remove the classes directory if it exists
-$ mkdir -p classes	    # create a clean 'classes' directory
-$ javac -d classes Main.java	# compile the program and copy all .class files to 'class' directory
-$ cd classes && java RouterProcess <224.0.0.9> <1> <4445> && cd ..	# change directory to 'classes' and run the program
-
+Step 1. $ rm -rf classes ||:	    # make sure you are in the project root directory. Remove the classes directory.
+Step 2. $ mkdir -p classes	        # create a clean 'classes' directory
+Step 3. $ javac -d classes RouterProcess.java	                # compile the program and copy all .class files to 'class' directory
+Step 4. $ cd classes && java RouterProcess 224.0.0.9 1 4445 	# change directory to 'classes' and run the program
+Step 5. $ cd ..                     # come back to the project root directory for restarting program. Go to Step 1.
 NOTE: The rover id must be unique for each new router
 

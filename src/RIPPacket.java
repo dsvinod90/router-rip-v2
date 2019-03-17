@@ -12,10 +12,10 @@
 
 /**
  * The model class responsible for the following -
- * 1. Maintain a POJO model for RIP Packet
- * 2.
+ * 1.   Maintain a POJO model for RIP Packet and wrap all corresponding operations
+ * 2.   Mark a given router as UNREACHABLE/DEAD when told to do so by the running {@link RouterProcess}
+ * 3.   Print the current routing table when told to do so by the running {@link RouterProcess}
  */
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 public class RIPPacket {
@@ -25,7 +25,6 @@ public class RIPPacket {
     public static final String COMMAND_RESPONSE = "2";
     public static final String RIP_VERSION_2 = "2";
     public static final String MUST_BE_ZERO = "0";
-    public static final int ROUTER_TAG = 1;
 
     private String command;
     private String version;
@@ -52,6 +51,13 @@ public class RIPPacket {
         return mList;
     }
 
+    /**
+     * Return the sender's IP address
+     */
+    public String getSender() {
+        return "10.0." + sender + ".0";
+    }
+
     @Override
     public String toString() {
         return "RIPPacket{" +
@@ -60,6 +66,19 @@ public class RIPPacket {
                 ", mustBeZero='" + mustBeZero + '\'' +
                 ", RTE=" + mList +
                 '}';
+    }
+
+    /**
+     * Print the routing table
+     */
+    public void print() {
+        System.out.println("Address\t\tNextHop\t\tCost");
+        System.out.println("===========================================");
+        for(int i = 0; i < mList.size(); i++) {
+            // get CIDR addressing from the given subnet mask
+            String CIDRString = Helper.convertNetmaskToCIDR(mList.get(i).getAddress(), mList.get(i).getSubnetMask());
+            System.out.println(CIDRString + "\t\t" + mList.get(i).getNextHop() + "\t\t" + mList.get(i).getMetric());
+        }
     }
 
     /**
@@ -81,8 +100,6 @@ public class RIPPacket {
         arr[i++] = (byte)Integer.parseInt(version);
         // add HEADER: mustBeZero
         byte roverId = Byte.valueOf(RoverManager.getInstance().getRoverId());
-//        Log.router("byte roverId: " + roverId);
-//        arr[i++] = (byte)Integer.parseInt(mustBeZero);
         arr[i++] = roverId;
         arr[i++] = (byte)Integer.parseInt(mustBeZero);
 
@@ -91,6 +108,7 @@ public class RIPPacket {
             // add Routing Table Entries
             for(int j = 0; j < mList.size(); j++)   {
                 RoutingTableEntry currentRTE = mList.get(j);
+
                 // add address family identifier
                 int addressFamily = currentRTE.getAddressFamilyIdentifier();
                 byte[] byteEquivalent = new byte[2];
@@ -146,33 +164,12 @@ public class RIPPacket {
             }
         }
         // return the byte array
-//        System.out.println("Returning arr with size: " + arr.length);
         return arr;
     }
 
     /**
-     * Return the sender's IP address
-     * @return
-     */
-    public String getSender() {
-        return "10.0." + sender + ".0";
-    }
-
-    /**
-     * Print the routing table
-     */
-    public void print() {
-        System.out.println("Address\t\tNextHop\t\tCost");
-        System.out.println("===========================================");
-        for(int i = 0; i < mList.size(); i++) {
-            // get CIDR addressing from the given subnet mask
-            String CIDRString = Helper.convertNetmaskToCIDR(mList.get(i).getAddress(), mList.get(i).getSubnetMask());
-            System.out.println(CIDRString + "\t\t" + mList.get(i).getNextHop() + "\t\t" + mList.get(i).getMetric());
-        }
-    }
-
-    /**
      * Mark a given neighboring network as dead (metric: unreachable)
+     * @param neighbor  the neighboring rover to be marked as dead
      */
     public void markAsDead(String neighbor) {
         System.out.println("markAsDead: " + neighbor + " marked as DEAD");
@@ -184,13 +181,11 @@ public class RIPPacket {
         }
     }
 
-
     /***
-     * Test method
+     * Just a test method for performing modular testing
      * @param args
      */
     public static void main(String[] args) {
         new RIPPacket().toByteArray(COMMAND_REQUEST);
-//        new RIPPacket().test();
     }
 }

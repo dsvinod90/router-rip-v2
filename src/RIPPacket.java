@@ -48,36 +48,8 @@ public class RIPPacket {
 //        addDummyData();
     }
 
-    public String getCommand() {
-        return command;
-    }
-
-    public void setCommand(String command) {
-        this.command = command;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public String getMustBeZero() {
-        return mustBeZero;
-    }
-
-    public void setMustBeZero(String mustBeZero) {
-        this.mustBeZero = mustBeZero;
-    }
-
     public List<RoutingTableEntry> getmList() {
         return mList;
-    }
-
-    public void setmList(List<RoutingTableEntry> mList) {
-        this.mList = mList;
     }
 
     @Override
@@ -88,43 +60,6 @@ public class RIPPacket {
                 ", mustBeZero='" + mustBeZero + '\'' +
                 ", RTE=" + mList +
                 '}';
-    }
-
-    /***
-     * Return byte array equivalent of the RIP Packet
-     * @return
-     */
-
-    public void test()  {
-        /*int m = 65535;
-        byte i_byte = (byte)m;
-        String hex = Helper.BitwiseManager.convertByteToHex(i_byte,16);
-        System.out.println(hex);
-        int value = Helper.BitwiseManager.convertHexToInteger(hex);
-        System.out.println("i_byte: " + hex + "  " + value);
-
-        String[] s = "192.168.1.1".split("\\.");
-        for(String el: s){
-            System.out.println(el + ": ");
-        }*/
-/*
-        int i = 65535;
-        byte[] result = new byte[2];
-        result[0] = (byte) (i >> 8);
-        result[1] = (byte) (i);
-        for(byte r: result) {
-            System.out.println(r + ":");
-        }*/
-//
-//        System.out.println(Long.parseLong("00" + "000" + "0", 16));
-//        long timestamp = System.currentTimeMillis() / 1000;
-//        System.out.println(timestamp);
-//        List<String> l = new ArrayList<>();
-//        System.out.println("LENGTH  = " + l.size());
-
-//        System.out.println(Helper.parseCIDR("10.0.1.0", "255.255.255.0"));
-        System.out.println(Helper.convertNetmaskToCIDR("10.0.1.0", "255.255.255.0"));
-
     }
 
     /**

@@ -1,11 +1,7 @@
 import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
-public class RIPPacket implements Serializable {
+public class RIPPacket {
 
     public static final int METRIC_UNREACHABLE = 16;
     public static final String COMMAND_REQUEST = "1";
@@ -149,7 +145,7 @@ public class RIPPacket implements Serializable {
         arr[i++] = (byte)Integer.parseInt(version);
         // add HEADER: mustBeZero
         byte roverId = Byte.valueOf(RoverManager.getInstance().getRoverId());
-        Log.router("byte roverId: " + roverId);
+//        Log.router("byte roverId: " + roverId);
 //        arr[i++] = (byte)Integer.parseInt(mustBeZero);
         arr[i++] = roverId;
         arr[i++] = (byte)Integer.parseInt(mustBeZero);
@@ -214,7 +210,7 @@ public class RIPPacket implements Serializable {
             }
         }
         // return the byte array
-        System.out.println("Returning arr with size: " + arr.length);
+//        System.out.println("Returning arr with size: " + arr.length);
         return arr;
     }
 
@@ -246,7 +242,7 @@ public class RIPPacket implements Serializable {
     }
 
     /**
-     * Mark a given neighboring networ as dead (metric unreachable)
+     * Mark a given neighboring network as dead (metric: unreachable)
      */
     public void markAsDead(String neighbor) {
         System.out.println("markAsDead: " + neighbor + " marked as DEAD");

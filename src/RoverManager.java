@@ -35,6 +35,7 @@ public class RoverManager {
     public RoverManager() {
         this.mRIPPacket = new RIPPacket();
         this.timeoutManagementProcess = new TimeoutManagementProcess();
+        // initialise the executor service to handle thread effectively
         this.myThreadPoolExecutorService = MyThreadPoolExecutorService.getInstance();
     }
 
@@ -44,7 +45,7 @@ public class RoverManager {
 
     public void setRoverId(String roverId) {
         this.roverId = roverId;
-        Log.router("RoverManager: " + "rover id is set to: " + this.roverId);
+//        Log.router("RoverManager: " + "rover id is set to: " + this.roverId);
     }
 
     public String getFullRoverId() {

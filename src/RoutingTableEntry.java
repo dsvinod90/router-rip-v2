@@ -1,6 +1,6 @@
 import java.io.Serializable;
 
-public class RoutingTableEntry implements Serializable {
+public class RoutingTableEntry {
     public static final int ADDRESS_FAMILY_IP = 2; // 2 for IP
     public static final String SUBNET_MASK = "255.255.255.0"; // 2 for IP
 

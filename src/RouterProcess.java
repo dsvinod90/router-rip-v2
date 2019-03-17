@@ -21,16 +21,32 @@ import java.util.Map;
 
 
 /**
- * A running Router Process
- * 1. Listens to multicasts for incoming routing tables
- * 2. Broadcasts its routing table to neighbors
- * 3. Keeps a record of interactions from neighbors as timeout
+ * A running Router Process performs the following tasks -
+ *  1.  Listen for incoming RIP messages over MulticastSocket (as UDP payload)
+ *  2.  Broadcasts the routing table to neighboring rovers every 5 seconds
+ *  3.  Maintain a mapping between each neighboring rover and last time a broadcast was
+ *      received. Marks a rover as unreachable if it does hear an update from it in 10 seconds
+ *  4.  Uses CIDR to represent networks. CIDR addressing depends on the network subnet mask
+ *
+ *  SOME ASSUMPTIONS:
+ *  1.  The initial topology of the network is such that each of the 10 rovers are in the
+ *      vicinity of all other 9 rovers
+ *  2.  The lander is in the vicinity of at least one rover at any given point of time
+ *  3.  For simplicity, the mustBeZero field of the RIP packet is used to transmit the unique
+ *      router id between routers
+ *
+ *  EXECUTING:
+ *  1.  java RouterProcess <multicast_ip> <unique_router_id> <port_number>
+ *      java            -   the java program
+ *      RouterProcess   -   the driver class
+ *      multicast_id    -   the IP address over which the rovers will talk to each other
+ *                          Recommended by RFC : 224.0.0.9
+ *      unique_router_id-   a user-given unique router id between [1, 255]
+ *      port_number     -   a shared port number over which multicast messages will be sent
  */
 public class RouterProcess {
 
     public static void main(String[] args) {
-        // initialise the executor service to handle thread effectively
-
         try {
             String multicastIp = args[0];
             String id = args[1];
@@ -41,7 +57,7 @@ public class RouterProcess {
                     .getService()
                     .execute(new MainRouterThread(multicastIp, port));
         }catch(ArrayIndexOutOfBoundsException ex){
-            System.out.println("Please enter arguments as <multicast IP> <router id> <port>");
+            System.out.println("Please enter arguments as <multicast_ip> <unique_router_id> <port_number>");
         }
     }
 }
@@ -67,7 +83,6 @@ class MainRouterThread extends Thread{
     public MainRouterThread(String multicastIp, String port)   {
         this.multicastIp = multicastIp;
         ROUTER_PORT = Integer.parseInt(port);
-
         try {
             // fire up the router listening port by subscribing to a multi cast IP
             // this port only listens to incoming broadcasts and then assigns the processing to
@@ -75,7 +90,7 @@ class MainRouterThread extends Thread{
             this.routerSocket = new MulticastSocket(ROUTER_PORT);
             // subscribe to multicast IP address
             this.routerSocket.joinGroup(InetAddress.getByName(multicastIp));
-            Log.router(RoverManager.getInstance().getFullRoverId() + ": Router is now running on port: " + ROUTER_PORT);
+//            Log.router(RoverManager.getInstance().getFullRoverId() + ": Router is now running on port: " + ROUTER_PORT);
             // start broadcasting routing table updates
             startBroadcastingProcess();
             // fire up the timeout process
@@ -121,7 +136,7 @@ class MainRouterThread extends Thread{
             // initialise the socket to broadcast
             try {
                 this.routingSocket = new DatagramSocket();
-                Log.router(RoverManager.getInstance().getFullRoverId() + ": Broadcasting datagram socket is now open!");
+                Log.router(RoverManager.getInstance().getFullRoverId() + ": Ready! Broadcasting request and waiting for a response...");
             } catch (IOException e) {
                 e.printStackTrace();
                 Log.router(RoverManager.getInstance().getFullRoverId() + ": Failed! cannot initialise Datagram socket inside BroadcastingProcess");
@@ -156,14 +171,14 @@ class MainRouterThread extends Thread{
                 try {
                     DatagramPacket packet = new DatagramPacket(buff, buff.length, group, destinationPort);
                     routingSocket.send(packet);
-                    System.out.print("\n"+RoverManager.getInstance().getFullRoverId() + ": The packet has been sent with payload: " + buff.length  +"\n[");
-                    for(int x = 0; x < buff.length; x++)    {
-                        System.out.print(buff[x] + " ");
-                    }
-                    System.out.print("]\n");
+//                    System.out.print("\n"+RoverManager.getInstance().getFullRoverId() + ": The packet has been sent with payload: " + buff.length  +"\n[");
+//                    for(int x = 0; x < buff.length; x++)    {
+//                        System.out.print(buff[x] + " ");
+//                    }
+//                    System.out.print("]\n");
 
-                    Log.router(RoverManager.getInstance().getFullRoverId() + " My routing table");
-                    mRIPPacket.print();
+//                    Log.router(RoverManager.getInstance().getFullRoverId() + " My routing table");
+//                    mRIPPacket.print();
                     // pause for 5 seconds before re-broadcasting the packet
                     sleep(5000);
                 } catch(InterruptedException e){
@@ -234,7 +249,7 @@ class ParseReceivedPacketProcess extends Thread {
 //        System.out.println("version: " + mVersion);
         // extract mustBeZero
         String mMustBeZero = String.valueOf(Long.parseLong(
-                        Helper.BitwiseManager.convertByteToHex(incomingBytes[3]), 16));
+                Helper.BitwiseManager.convertByteToHex(incomingBytes[3]), 16));
 
         String mSender = String.valueOf(Integer.parseInt(
                 Helper.BitwiseManager.convertByteToHex(incomingBytes[2]), 16));
@@ -311,8 +326,8 @@ class ParseReceivedPacketProcess extends Thread {
 
         // check if there is an entry for this neighbor network itself
         boolean neighborExistsInRoutingTable = false;
-        for(RoutingTableEntry myEntries: mRIPPacket.getmList()) {
-            if(myEntries.getAddress().equalsIgnoreCase(receivedRIPPacket.getSender()))  {
+        for(RoutingTableEntry myEntry: mRIPPacket.getmList()) {
+            if(myEntry.getAddress().equalsIgnoreCase(receivedRIPPacket.getSender()))  {
                 neighborExistsInRoutingTable = true;
             }
         }
@@ -325,8 +340,9 @@ class ParseReceivedPacketProcess extends Thread {
                     , RoutingTableEntry.SUBNET_MASK
                     , receivedRIPPacket.getSender()
                     , 1));
-        }
 
+            mRIPPacket.print();
+        }
 
         boolean changed = false;
         // go over each entry in the incoming table
@@ -334,29 +350,30 @@ class ParseReceivedPacketProcess extends Thread {
             // check if the destination address of this entry
             // matches with the destination address of any entry in the current table
             boolean matches = false;
-            for(RoutingTableEntry currentEntry: mRIPPacket.getmList())    {
-                if(receivedRIPPacket.getSender().equalsIgnoreCase(currentEntry.getAddress()))    {
+            for(RoutingTableEntry myEntry: mRIPPacket.getmList())    {
+                if(myEntry.getAddress().equalsIgnoreCase(incomingEntry.getAddress()))    {
+                    System.out.println("updateMyRoutingTable: Entry" +  incomingEntry.getAddress() + " exists in my table");
                     matches = true;
                     // if the entry already matches some entry in the current table then some cases arise
                     // Check if the NEXT HOP of the entry in the CURRENT table
                     // equals the incoming router network address
-
-                    if(currentEntry.getAddress().equalsIgnoreCase(receivedRIPPacket.getSender()))   {
-
-                    }
-                    else if(currentEntry.getNextHop().equalsIgnoreCase(receivedRIPPacket.getSender()))  {
+                    if(myEntry.getNextHop().equalsIgnoreCase(receivedRIPPacket.getSender()))  {
                         // trust the incoming packet blindly
                         // overwrite the metric current instance for this entry
-                        currentEntry.setMetric(1+incomingEntry.getMetric());
-                        changed = true;
-                        Log.router(RoverManager.getInstance().getFullRoverId() + " changed 1");
+                        if(incomingEntry.getMetric() == RIPPacket.METRIC_UNREACHABLE)  {
+                            myEntry.setMetric(RIPPacket.METRIC_UNREACHABLE);
+                        }else {
+                            myEntry.setMetric(1 + incomingEntry.getMetric());
+                            changed = true;
+                            Log.router(RoverManager.getInstance().getFullRoverId() + " changed 1");
+                        }
                     }else   {
                         // find the better one of the two options
-                        if((1+incomingEntry.getMetric()) < currentEntry.getMetric())  {
+                        if((1+incomingEntry.getMetric()) < myEntry.getMetric())  {
                             // incoming is better, time to update the current entry
-                            currentEntry.setMetric(1+incomingEntry.getMetric());
+                            myEntry.setMetric(1+incomingEntry.getMetric());
                             // update the next hop to this new client
-                            currentEntry.setNextHop(receivedRIPPacket.getSender());
+                            myEntry.setNextHop(receivedRIPPacket.getSender());
                             // mark as changed
                             changed = true;
                             Log.router(RoverManager.getInstance().getFullRoverId() + " changed 2");
@@ -367,7 +384,8 @@ class ParseReceivedPacketProcess extends Thread {
             // if matches == false this means that this particular destination
             // address has no mention in the router's own routing table
             // hence we can just add this to the current routing table
-            if(!matches)    {
+            // also ensure that this address is not the same as my own address
+            if(!matches && !incomingEntry.getAddress().equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
                 System.out.println("ADDED TO TABLE : " + incomingEntry.getAddress() + ", " + incomingEntry.getNextHop() + ", " + incomingEntry.getMetric());
                 mRIPPacket.getmList().add(incomingEntry);
             }
@@ -399,9 +417,13 @@ class ParseReceivedPacketProcess extends Thread {
 
 /**
  * The Time out manager
- * This process runs every 10 seconds on all the immediate neighbors in
+ * This process runs every 10 seconds for all the immediate neighbors in
  * the routing table. If any neighbor has not responded over the last 10
- * seconds, then an action is taken
+ * seconds, then an action is taken -
+ * Action :
+ * The action includes marking the corresponding neighbor as UNREACHABLE in
+ * the routing table and then triggering this change to the subsequent neigh-
+ * boring rovers
  */
 class TimeoutManagementProcess extends Thread {
     private HashMap<String, Long> timeoutTable = new HashMap<>();
@@ -412,12 +434,12 @@ class TimeoutManagementProcess extends Thread {
      */
     public void updateTimeout(String neighbor) {
         timeoutTable.put(neighbor, System.currentTimeMillis() / 1000);
-        System.out.println("TimeoutManagementProcess: timeout updated : <" + neighbor + timeoutTable.get(neighbor) + ">");
+//        System.out.println("TimeoutManagementProcess: timeout updated : <" + neighbor + timeoutTable.get(neighbor) + ">");
     }
 
     @Override
     public void run()   {
-        System.out.println("TimeoutManagementProcess: TIMEOUT MANAGEMENT FIRED UP");
+//        System.out.println("TimeoutManagementProcess: TIMEOUT MANAGEMENT FIRED UP");
         while(true) {
             try {
                 sleep(10000);

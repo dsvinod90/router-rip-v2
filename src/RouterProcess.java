@@ -57,7 +57,7 @@ public class RouterProcess {
                     .execute(new MainRouterProcess(multicastIp, port));
         }catch(ArrayIndexOutOfBoundsException ex){
             ex.printStackTrace();
-            System.out.println("Please enter arguments as <multicast_ip> <unique_router_id> <port_number>");
+            System.out.println("Please enter arguments as <multicast_ip> <id> <port>");
         }
     }
 }

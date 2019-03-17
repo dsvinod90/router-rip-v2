@@ -72,12 +72,12 @@ public class RIPPacket {
      * Print the routing table
      */
     public void print() {
-        System.out.println("Address\t\tNextHop\t\tCost");
+        System.out.println("\nAddress\t\tNextHop\t\tCost");
         System.out.println("===========================================");
         for(int i = 0; i < mList.size(); i++) {
             // get CIDR addressing from the given subnet mask
-            String CIDRString = Helper.convertNetmaskToCIDR(mList.get(i).getAddress(), mList.get(i).getSubnetMask());
-            System.out.println(CIDRString + "\t\t" + mList.get(i).getNextHop() + "\t\t" + mList.get(i).getMetric());
+            String CIDRString = Helper.parseSubnetMaskToCIDR(mList.get(i).getAddress(), mList.get(i).getSubnetMask());
+            System.out.println(CIDRString + "\t" + mList.get(i).getNextHop() + "\t" + mList.get(i).getMetric());
         }
     }
 
@@ -172,7 +172,7 @@ public class RIPPacket {
      * @param neighbor  the neighboring rover to be marked as dead
      */
     public void markAsDead(String neighbor) {
-        System.out.println("markAsDead: " + neighbor + " marked as DEAD");
+//        System.out.println("markAsDead: " + neighbor + " marked as DEAD");
         // go over all entries and mark the corresponding one as having metric 16
         for(RoutingTableEntry entry: mList)  {
             if(entry.getAddress().equalsIgnoreCase(neighbor))   {

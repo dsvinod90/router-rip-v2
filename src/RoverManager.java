@@ -20,9 +20,9 @@
 
 public class RoverManager {
     private String roverId;
-    private MyThreadPoolExecutorService myThreadPoolExecutorService = null;
-    private TimeoutManagementProcess timeoutManagementProcess = null;
-    private RIPPacket mRIPPacket = null;
+    private MyThreadPoolExecutorService myThreadPoolExecutorService;
+    private TimeoutManagementProcess timeoutManagementProcess;
+    private RIPPacket mRIPPacket;
     private static RoverManager roverManager = null;
 
     public static RoverManager getInstance()    {

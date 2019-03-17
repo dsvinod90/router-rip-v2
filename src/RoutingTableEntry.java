@@ -1,4 +1,20 @@
-import java.io.Serializable;
+/**
+ * {@link RoutingTableEntry}
+ *
+ * @version:
+ *      1.0.1
+ *
+ * @revision:
+ *      1
+ *
+ * @author:
+ *      ishanguliani aka ig5859
+ */
+
+/**
+ * A {@link RoutingTableEntry} model class to represent an RTE
+ * This is used to obtain an object oriented representation of the RIPPacket RTEs
+ */
 
 public class RoutingTableEntry {
     public static final int ADDRESS_FAMILY_IP = 2; // 2 for IP
@@ -25,32 +41,16 @@ public class RoutingTableEntry {
         return addressFamilyIdentifier;
     }
 
-    public void setAddressFamilyIdentifier(int addressFamilyIdentifier) {
-        this.addressFamilyIdentifier = addressFamilyIdentifier;
-    }
-
     public int getRouteTag() {
         return routeTag;
-    }
-
-    public void setRouteTag(int routeTag) {
-        this.routeTag = routeTag;
     }
 
     public String getAddress() {
         return address;
     }
 
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
     public String getSubnetMask() {
         return subnetMask;
-    }
-
-    public void setSubnetMask(String subnetMask) {
-        this.subnetMask = subnetMask;
     }
 
     public String getNextHop() {

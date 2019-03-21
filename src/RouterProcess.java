@@ -112,8 +112,10 @@ class MainRouterProcess extends Thread{
                 DatagramPacket incomingPacket = new DatagramPacket(buffer, buffer.length);
                 // read the incoming data into the packet
                 routerSocket.receive(incomingPacket);
+                System.out.println("Packet from : " + incomingPacket.getAddress().toString() + ", SocketAddress: " + incomingPacket.getSocketAddress() + ", Port: " + incomingPacket.getPort());
                 // dispatch this client socket to a worker thread
-                RoverManager.getInstance().getMyThreadPoolExecutorService().getService().execute(new ParseReceivedPacketProcess(incomingPacket, routerSocket, mRIPPacket));
+                RoverManager.getInstance().getMyThreadPoolExecutorService().getService().execute(
+                        new ParseReceivedPacketProcess(incomingPacket, routerSocket, mRIPPacket));
             }catch(IOException ex){
                 ex.printStackTrace();
             }

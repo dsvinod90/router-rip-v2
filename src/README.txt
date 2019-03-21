@@ -21,7 +21,7 @@ OPTION 1: If you have the 'make' program installed in your machine. Here's how y
         Step 1. $ make rover multicast_ip=224.0.0.9 id=1 port=4445      # this will fire up a new rover
         Step 2. $ make rover multicast_ip=224.0.0.9 id=2 port=4445      # this will fire up another rover in a new shell/vm
         Step N. $ ..............                                        # fire upto N (10) rovers
-        NOTE:   -
+        NOTE:   -   Fire up as many rovers as needed
                 -   There should be no spaces on either side of '='
                 -   The id has to be unique for each rover process
 

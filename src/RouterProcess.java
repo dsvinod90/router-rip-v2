@@ -85,7 +85,8 @@ class MainRouterProcess extends Thread{
             // a worker thread
             this.routerSocket = new MulticastSocket(ROUTER_PORT);
             // subscribe to multicast IP address
-            this.routerSocket.joinGroup(new InetSocketAddress(multicastIp, ROUTER_PORT), NetworkInterface.getByName("enp0s3"));
+//            this.routerSocket.joinGroup(new InetSocketAddress(multicastIp, ROUTER_PORT), NetworkInterface.getByName("enp0s3"));
+            this.routerSocket.joinGroup(InetAddress.getByName(multicastIp));
             // start broadcasting routing table updates
             startBroadcastingProcess();
             // fire up the timeout process

@@ -150,7 +150,7 @@ class MainRouterProcess extends Thread{
         public BroadcastingProcess() {
             // initialise the socket to broadcast
             try {
-                this.routingSocket = new DatagramSocket();
+                this.routingSocket = new DatagramSocket(14501);
                 Log.router(RoverManager.getInstance().getFullRoverId() + ": Ready! Broadcasting request and waiting for a response...");
             } catch (IOException e) {
                 e.printStackTrace();

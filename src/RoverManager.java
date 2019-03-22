@@ -11,6 +11,8 @@
  *      ishanguliani aka ig5859
  */
 
+import java.util.HashMap;
+
 /**
  * The Manager class responsible for driving the core functions
  * of the Rover like -
@@ -24,6 +26,7 @@ public class RoverManager {
     private TimeoutManagementProcess timeoutManagementProcess;
     private RIPPacket mRIPPacket;
     private static RoverManager roverManager = null;
+    private HashMap<String, String> IpAddressMap = new HashMap<>();
 
     public static RoverManager getInstance()    {
         if(roverManager == null)    {
@@ -37,6 +40,10 @@ public class RoverManager {
         this.timeoutManagementProcess = new TimeoutManagementProcess();
         // initialise the executor service to handle thread effectively
         this.myThreadPoolExecutorService = MyThreadPoolExecutorService.getInstance();
+    }
+
+    public HashMap<String, String> getIpAddressMap() {
+        return IpAddressMap;
     }
 
     public String getRoverId() {

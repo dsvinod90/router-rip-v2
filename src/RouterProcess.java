@@ -112,7 +112,10 @@ class MainRouterProcess extends Thread{
                 DatagramPacket incomingPacket = new DatagramPacket(buffer, buffer.length);
                 // read the incoming data into the packet
                 routerSocket.receive(incomingPacket);
-                System.out.println("Packet from : " + incomingPacket.getAddress().toString() + ", SocketAddress: " + incomingPacket.getSocketAddress() + ", Port: " + incomingPacket.getPort());
+                RoverManager.getInstance().getIpAddressMap().put(String.valueOf(Integer.parseInt(
+                        Helper.BitwiseManager.convertByteToHex(incomingPacket.getData()[2]), 16)), incomingPacket.getAddress().toString().substring(1));
+                System.out.println("mapped: " + RoverManager.getInstance().getIpAddressMap());
+//                System.out.println("Packet from : " + incomingPacket.getAddress().toString() + ", SocketAddress: " + incomingPacket.getSocketAddress() + ", Port: " + incomingPacket.getPort());
                 // dispatch this client socket to a worker thread
                 RoverManager.getInstance().getMyThreadPoolExecutorService().getService().execute(
                         new ParseReceivedPacketProcess(incomingPacket, routerSocket, mRIPPacket));

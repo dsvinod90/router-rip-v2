@@ -74,10 +74,15 @@ public class RIPPacket {
     public void print() {
         System.out.println("\nAddress\t\tNextHop\t\tCost");
         System.out.println("===========================================");
+        // print the entry of self
+        // get CIDR addressing from the given subnet mask
+        String CIDRString = Helper.parseSubnetMaskToCIDR(RoverManager.getInstance().getFullRoverId(), RoutingTableEntry.SUBNET_MASK);
+        System.out.println(CIDRString + "\t" + Helper.parseNetworkAsIpAddress(RoverManager.getInstance().getFullRoverId()) + "\t" + "0");
+
         for(int i = 0; i < mList.size(); i++) {
             // get CIDR addressing from the given subnet mask
-            String CIDRString = Helper.parseSubnetMaskToCIDR(mList.get(i).getAddress(), mList.get(i).getSubnetMask());
-            System.out.println(CIDRString + "\t" + mList.get(i).getNextHop() + "\t" + mList.get(i).getMetric());
+            CIDRString = Helper.parseSubnetMaskToCIDR(mList.get(i).getAddress(), mList.get(i).getSubnetMask());
+            System.out.println(CIDRString + "\t" + Helper.parseNetworkAsIpAddress(mList.get(i).getNextHop()) + "\t" + mList.get(i).getMetric());
         }
     }
 

@@ -18,6 +18,10 @@ import java.net.UnknownHostException;
 
 public class Helper {
 
+    public static String parseNetworkAsIpAddress(String nextHop) {
+        return RoverManager.getInstance().getIpAddressMap().getOrDefault(nextHop, nextHop);
+    }
+
     public static class BitwiseManager {
         /**
          * Helper method that uses bitwise operators to perform

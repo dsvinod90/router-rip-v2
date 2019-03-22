@@ -24,6 +24,7 @@ clean:
 
 $(MAKEDIR): $(MAINFILE) clean
 	@echo "Creating buffer directories for intermediate storage 'classes'..."
+	@mkdir -p classes
 
 $(MAINFILE): RouterProcess.java
 	@echo "Analyzing moon surface for rover deployment..."

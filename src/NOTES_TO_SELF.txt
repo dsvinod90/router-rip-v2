@@ -1,5 +1,5 @@
 1.  Each router multicasts a request packet on waking up for the first time
-2.  On receiving a packet with command = REQUEST (1) - All neighbors respond with their routing table to that particular router,
+2.  On receiving a packet with endOfData = REQUEST (1) - All neighbors respond with their routing table to that particular router,
     this new router fills in its routing table
 3.  Rule for filling in the table -
     A. access the incoming routing table

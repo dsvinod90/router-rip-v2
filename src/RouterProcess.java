@@ -96,11 +96,12 @@ class MainRouterProcess extends Thread{
                 e.printStackTrace();
             }
 
-            NetworkInterface networkInterface = getInterfaceName();
-            System.out.println("MainRouterProcess(): interface toString(): " + networkInterface.toString());
-            System.out.println("MainRouterProcess(): interfaceName displayName(): " + networkInterface.getDisplayName());
+            //NetworkInterface networkInterface = getInterfaceName();
+           
+	   // System.out.println("MainRouterProcess(): interface toString(): " + networkInterface.toString());
+            //System.out.println("MainRouterProcess(): interfaceName displayName(): " + networkInterface.getDisplayName());
             try {
-                this.multicastRouterSocket.joinGroup(new InetSocketAddress(InetAddress.getByName(multicastIp), ROUTER_PORT), networkInterface);
+                this.multicastRouterSocket.joinGroup(new InetSocketAddress(InetAddress.getByName(multicastIp), ROUTER_PORT), NetworkInterface.getByName("enp0s3"));
                 System.out.println("MainRouterProcess(): multicastRouterSocket is set");
             } catch (IOException e) {
                 e.printStackTrace();

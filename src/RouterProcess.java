@@ -85,7 +85,6 @@ class MainRouterProcess extends Thread{
      * Constructor opens a server socket and listens
      */
     public MainRouterProcess(String multicastIp, String port, String destinationIp, String filename)   {
-        System.setProperty("java.net.preferIPv4Stack", "true");
         this.filename = filename;
         this.multicastIp = multicastIp;
         this.destinationIp = destinationIp;
@@ -153,16 +152,16 @@ class MainRouterProcess extends Thread{
 //                                .execute(new ByteSendingProcess(destinationIp, filename));
                     }
 
-                    RoverManager.getInstance()
-                            .getMyThreadPoolExecutorService()
-                            .getService()
-                            .execute(new ByteReceivingProcess());
-
-                    RoverManager.getInstance()
-                            .getMyThreadPoolExecutorService()
-                            .getService()
-                            .execute(new AckReceivingProcess());
-
+//                    RoverManager.getInstance()
+//                            .getMyThreadPoolExecutorService()
+//                            .getService()
+//                            .execute(new ByteReceivingProcess());
+//
+//                    RoverManager.getInstance()
+//                            .getMyThreadPoolExecutorService()
+//                            .getService()
+//                            .execute(new AckReceivingProcess());
+//
                     startedSendingBytes = true;
                 }
 
@@ -264,7 +263,6 @@ class MainRouterProcess extends Thread{
                 try {
                     DatagramPacket packet = new DatagramPacket(buff, buff.length, group, ROUTER_PORT);
                     routingSocket.send(packet);
-
                     // pause for 5 seconds before re-broadcasting the packet
                     sleep(BROADCASTING_INTERVAL_IN_SECONDS*1000);
                 } catch(InterruptedException e){

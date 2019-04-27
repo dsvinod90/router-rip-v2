@@ -85,6 +85,7 @@ class MainRouterProcess extends Thread{
      * Constructor opens a server socket and listens
      */
     public MainRouterProcess(String multicastIp, String port, String destinationIp, String filename)   {
+        System.setProperty("java.net.preferIPv4Stack", "true");
         this.filename = filename;
         this.multicastIp = multicastIp;
         this.destinationIp = destinationIp;

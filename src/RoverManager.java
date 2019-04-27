@@ -11,6 +11,7 @@
  *      ishanguliani aka ig5859
  */
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -27,7 +28,7 @@ public class RoverManager {
     private RIPPacket mRIPPacket;
     private static RoverManager roverManager = null;
     private HashMap<String, String> IpAddressMap = new HashMap<>();
-    private HashMap<String, String> connectedHostsMap = new HashMap<>();
+    private HashMap<String, ArrayList<Byte>> connectedHostsMap = new HashMap<>();
 
     public static RoverManager getInstance()    {
         if(roverManager == null)    {
@@ -47,7 +48,7 @@ public class RoverManager {
         return IpAddressMap;
     }
 
-    public HashMap<String, String> getConnectedHostsMap() {
+    public HashMap<String, ArrayList<Byte>> getConnectedHostsMap() {
         return connectedHostsMap;
     }
 

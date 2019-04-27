@@ -70,13 +70,15 @@ public class RouterProcess {
  * requests on a port number and serves them as needed
  */
 class MainRouterProcess extends Thread{
+    private static final Integer ACK_PORT = 51122;
     // the routing table
     private RIPPacket mRIPPacket = RoverManager.getInstance().getmRIPPacket();
     private String multicastIp;
     private String destinationIp;
     private String filename;
+    private boolean startedSendingBytes = false;
     private static int ROUTER_PORT;
-    private static int FILE_RECEPTION_PORT = 53334;
+    private static int FILE_TRANSFER_PORT = 59999;
     private MulticastSocket multicastRouterSocket;
 
     /**
@@ -92,19 +94,19 @@ class MainRouterProcess extends Thread{
             // this port only listens to incoming broadcasts and then assigns the processing to a worker thread
             try {
                 this.multicastRouterSocket = new MulticastSocket(ROUTER_PORT);
+                this.multicastRouterSocket.joinGroup(InetAddress.getByName(multicastIp));
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-            NetworkInterface networkInterface = getInterfaceName();
-            System.out.println("MainRouterProcess(): interface toString(): " + networkInterface.toString());
-            System.out.println("MainRouterProcess(): interfaceName displayName(): " + networkInterface.getDisplayName());
-            try {
-                this.multicastRouterSocket.joinGroup(new InetSocketAddress(InetAddress.getByName(multicastIp), ROUTER_PORT), networkInterface);
-                System.out.println("MainRouterProcess(): multicastRouterSocket is set");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+//            NetworkInterface networkInterface = getInterfaceName();
+//            System.out.println("MainRouterProcess(): interface toString(): " + networkInterface.toString());
+//            System.out.println("MainRouterProcess(): interfaceName displayName(): " + networkInterface.getDisplayName());
+//            try {
+//                this.multicastRouterSocket.joinGroup(new InetSocketAddress(InetAddress.getByName(multicastIp), ROUTER_PORT), networkInterface);
+//                System.out.println("MainRouterProcess(): multicastRouterSocket is set");
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
 
             // start executing the routing table broadcasting process in the central thread pool service
             RoverManager.getInstance()
@@ -115,21 +117,7 @@ class MainRouterProcess extends Thread{
                     .getMyThreadPoolExecutorService()
                     .getService()
                     .execute(RoverManager.getInstance().getTimeoutManagementProcess());
-
-            // start the file sending process if filename and destination ip exist
-            if(filename != null && destinationIp != null)   {
-                sleep(2000);
-//                RoverManager.getInstance()
-//                        .getMyThreadPoolExecutorService()
-//                        .getService()
-//                        .execute(new ByteSendingProcess(destinationIp, filename));
-            }else {
-//                RoverManager.getInstance()
-//                        .getMyThreadPoolExecutorService()
-//                        .getService()
-//                        .execute(new ByteReceivingProcess());
-            }
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             System.err.println("BroadcastingProcess(): could not sleep well ");
         }
@@ -155,6 +143,28 @@ class MainRouterProcess extends Thread{
                 // dispatch this client socket to a worker thread
                 RoverManager.getInstance().getMyThreadPoolExecutorService().getService().execute(
                         new ParseReceivedPacketProcess(incomingPacket, multicastRouterSocket, mRIPPacket));
+
+                if(!startedSendingBytes)    {
+                    if(filename != null && destinationIp != null)   {
+//                        RoverManager.getInstance()
+//                                .getMyThreadPoolExecutorService()
+//                                .getService()
+//                                .execute(new ByteSendingProcess(destinationIp, filename));
+                    }
+
+                    RoverManager.getInstance()
+                            .getMyThreadPoolExecutorService()
+                            .getService()
+                            .execute(new ByteReceivingProcess());
+
+                    RoverManager.getInstance()
+                            .getMyThreadPoolExecutorService()
+                            .getService()
+                            .execute(new AckReceivingProcess());
+
+                    startedSendingBytes = true;
+                }
+
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
@@ -173,7 +183,7 @@ class MainRouterProcess extends Thread{
         } catch (UnknownHostException e) {
             e.printStackTrace();
         }
-        
+
         // subscribe to multicast IP address
         Enumeration<NetworkInterface> netifs = null;
         try {
@@ -181,7 +191,7 @@ class MainRouterProcess extends Thread{
         } catch (SocketException e) {
             e.printStackTrace();
         }
-        
+
         NetworkInterface resultInterface = null;
         // hostname is passed to your method
         InetAddress myAddr = null;
@@ -201,7 +211,7 @@ class MainRouterProcess extends Thread{
                 }
             }
         }
-        
+
         return resultInterface;
     }
 
@@ -217,7 +227,6 @@ class MainRouterProcess extends Thread{
 
     public class BroadcastingProcess extends Thread {
         DatagramSocket routingSocket;
-
         public BroadcastingProcess() {
             // initialise the socket to broadcast
             try {
@@ -240,9 +249,6 @@ class MainRouterProcess extends Thread{
                 Log.router(RoverManager.getInstance().getFullRoverId() + ": Unknown host Exception inside BroadcastingProcess");
             }
 
-            // prepare the destination port
-            Integer destinationPort = ROUTER_PORT;
-
             // prepare the payload
             while(true) {
                 byte[] buff;
@@ -255,7 +261,7 @@ class MainRouterProcess extends Thread{
                 }
 
                 try {
-                    DatagramPacket packet = new DatagramPacket(buff, buff.length, group, destinationPort);
+                    DatagramPacket packet = new DatagramPacket(buff, buff.length, group, ROUTER_PORT);
                     routingSocket.send(packet);
 
                     // pause for 5 seconds before re-broadcasting the packet
@@ -274,7 +280,6 @@ class MainRouterProcess extends Thread{
         }
     }
 
-
     /**
      * A control class that controls the synchronization between sending
      * packets and receiving acknoeledgements at the Datagram socket.
@@ -287,7 +292,9 @@ class MainRouterProcess extends Thread{
         // this variable allows the program to send the next few bytes
         // in the packet. Sender sends only if ackReceived is true
         public volatile boolean ackReceived = true;
+        public volatile String lastAckSent;
     }
+
     final Control control = new Control();
 
     /**
@@ -313,11 +320,23 @@ class MainRouterProcess extends Thread{
 
         @Override
         public void run()   {
+            try {
+                sleep(12000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             System.out.println("ByteSendingProcess(): entered");
             // prepare the destination address of the packet
             InetAddress destinationInetAddress = null;
+
+            String nextHopIp = getNextHopOfDestinationIp(destinationIpString);
+            if(nextHopIp == null)    {
+                System.err.println("ByteSendingProcess(): run(): nextHopIp is null");
+                System.exit(1);
+            }
+
             try {
-                destinationInetAddress = InetAddress.getByName(multicastIp);
+                destinationInetAddress = InetAddress.getByName(nextHopIp);
             } catch (UnknownHostException e) {
                 e.printStackTrace();
                 Log.router(RoverManager.getInstance().getFullRoverId() + ": Unknown host Exception inside BroadcastingProcess");
@@ -331,8 +350,6 @@ class MainRouterProcess extends Thread{
                 System.exit(1);
             }
             System.out.println("ByteSendingProcess(): FileManager: file is open for reading");
-            // prepare the destination port
-            Integer destinationPort = FILE_RECEPTION_PORT;
             // prepare a new packet with some new data each time and send
             String srcAddress = RoverManager.getInstance().getFullRoverId();
             String ack = "0";
@@ -360,7 +377,7 @@ class MainRouterProcess extends Thread{
                     byte[] buff;
                     buff = mPacket.toByteArray();
                     try {
-                        DatagramPacket packet = new DatagramPacket(buff, buff.length, destinationInetAddress, destinationPort);
+                        DatagramPacket packet = new DatagramPacket(buff, buff.length, destinationInetAddress, FILE_TRANSFER_PORT);
                         byteSendingSocket.send(packet);
                         System.out.println("ByteSendingProcess(): packet sent to :" + mPacket.getDestinationAddress());
                         System.out.println("ByteSendingProcess(): packet sent from :" + mPacket.getSrcAddress());
@@ -397,6 +414,25 @@ class MainRouterProcess extends Thread{
     }
 
     /**
+     * Helper method that skims through the routing table entries and returns
+     * the next hop IP address of the fullSenderIpAddress received as argument
+     * @param destinationIpString
+     * @return
+     */
+    private String getNextHopOfDestinationIp(String destinationIpString) {
+        System.out.println("getNextHopOfDestinationIp(): entered");
+        RIPPacket mPacket = RoverManager.getInstance().getmRIPPacket();
+        for(RoutingTableEntry myEntry: mPacket.getmList()) {
+            if(myEntry.getAddress().equalsIgnoreCase(destinationIpString))  {
+                System.out.println("getNextHopOfDestinationIp(): match found for : " + destinationIpString);
+                System.out.println("getNextHopOfDestinationIp(): returning nextHop for : " + myEntry.getNextHop());
+                return myEntry.getNextHop();
+            }
+        }
+        return null;
+    }
+
+    /**
      * A thread to send bytes of the given file over the network
      */
     public class ByteReceivingProcess extends Thread {
@@ -405,7 +441,7 @@ class MainRouterProcess extends Thread{
         public ByteReceivingProcess() {
             // initialise the socket to broadcast
             try {
-                this.byteReceivingSocket = new DatagramSocket(FILE_RECEPTION_PORT);
+                this.byteReceivingSocket = new DatagramSocket(FILE_TRANSFER_PORT);
                 Log.router(RoverManager.getInstance().getFullRoverId() + "ByteReceivingProcess(): byte receiving socket binded to port : " + byteReceivingSocket.getLocalPort());
             } catch (IOException e) {
                 e.printStackTrace();
@@ -436,23 +472,63 @@ class MainRouterProcess extends Thread{
 
                     System.out.println("ByteReceivingProcess(): received endOfData: " + endOfData);
                     System.out.println("ByteReceivingProcess(): received data: " + data);
+                    // check if this incoming byte has already been acknowledged in the last ack
+                    if(data.equalsIgnoreCase(control.lastAckSent)) {
+                        System.out.println("ByteReceivingProcess(): received data looks redundant as last ack: " + control.lastAckSent + " - skipping reception...");
+                        continue;
+                    }
+
                     System.out.println("ByteReceivingProcess(): received ack: " + ack);
                     if(fullDestinationAddress.equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
                         System.out.println("ByteReceivingProcess(): received destinationAddress: " + fullDestinationAddress + " : destined to reach me");
                     }else   {
-                        System.out.println("ByteReceivingProcess(): received destinationAddress: " + fullDestinationAddress + " : not sent by me");
+                        System.out.println("ByteReceivingProcess(): received destinationAddress: " + fullDestinationAddress + " : not sent for me");
                     }
-                    System.out.println("ByteReceivingProcess(): received fullSenderIpAddress: " + fullSenderIpAddress);
+
+                    // avoid processing packet if the sender is myself
+                    if(fullSenderIpAddress.equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
+                        System.out.println("ByteReceivingProcess(): received fullSenderIpAddress : " + fullSenderIpAddress + ", this is me, skipping");
+                        continue;
+                    }else   {
+                        System.out.println("ByteReceivingProcess(): received fullSenderIpAddress : " + fullSenderIpAddress + ", a new sender, processing...");
+                    }
+
                     NewPacket receivedPacket = new NewPacket(endOfData, data, ack, fullSenderIpAddress, fullDestinationAddress);
                     System.out.println("ByteReceivingProcess(): received packet: " + receivedPacket);
 
-                    // check if this sender exists in the hashtable
-                    // if yes, then just add to the corresponding byte array
-                    // also, if this packet has endOfData set, then just mark this as completed
-                    // remove the sender from the map, and spit out the full table
-                    // else add him to the sender list
+                    byte parsedData = incomingPacket.getData()[1];
+                    System.out.println("ByteReceivingProcess(): run(): data: " + data + ", byte parsedData: " + parsedData);
+                    // check if this sender exists in the connected hosts hashmap
+                    if(RoverManager.getInstance().getConnectedHostsMap().containsKey(fullSenderIpAddress))  {
+                        System.out.println("ByteReceivingProcess(): run(): found connected host: " + fullSenderIpAddress + ", with byte length: " + RoverManager.getInstance().getConnectedHostsMap().get(fullSenderIpAddress).size());
+                    }else   {
+                        // add the host to the connected hosts list with an empty byte array
+                        RoverManager.getInstance().getConnectedHostsMap().put(fullSenderIpAddress, new ArrayList<>());
+                        System.out.println("ByteReceivingProcess(): run(): added new host: " + fullSenderIpAddress);
+                    }
+                    // check if this the packet with endOfData flag set
+
+                    if(endOfData.matches("1*")) {
+                        // just mark the end of the reception on the connected host
+                        ArrayList<Byte> completedFile = RoverManager.getInstance().getConnectedHostsMap().get(fullSenderIpAddress);
+                        // remove the host from the connected hist list
+                        RoverManager.getInstance().getConnectedHostsMap().remove(fullSenderIpAddress);
+                        // print the completed file
+                        System.out.println("ByteReceivingProcess(): run(): fileCompleted : " + completedFile);
+                    }else   {
+                        // since the endOfData is not set, this file has some data so
+                        // add it to the corresponding byte list of the host
+                        RoverManager.getInstance().getConnectedHostsMap().get(fullSenderIpAddress).add(parsedData);
+                        System.out.println("ByteReceivingProcess(): run(): added data to host: " + fullSenderIpAddress + ", byte: " + parsedData);
+                    }
+
                     // now since we have taken care of the complete byte, this is the right time
                     // to send an acknowledgement back to the original sender, do it now
+                    RoverManager.getInstance()
+                            .getMyThreadPoolExecutorService()
+                            .getService()
+                            .execute(new AckSendingProcess(fullSenderIpAddress, Byte.toString(parsedData)));
+
 //                    RoverManager.getInstance().getConnectedHostsMap().put(fullDestinationAddress, incomingPacket.getAddress().toString().substring(1));
 //                System.out.println("mapped: " + RoverManager.getInstance().getIpAddressMap());
 //                System.out.println("Packet from : " + incomingPacket.getAddress().toString() + ", SocketAddress: " + incomingPacket.getSocketAddress() + ", Port: " + incomingPacket.getPort());
@@ -464,6 +540,178 @@ class MainRouterProcess extends Thread{
                 }
             }
             Log.router(RoverManager.getInstance().getFullRoverId() + "ByteReceivingProcess(): Stop sending broadcast packets");
+        }
+    }
+
+    /**
+     * A thread to send ack packet over the network
+     */
+    public class AckSendingProcess extends Thread {
+        private String fullSenderIpAddress;
+        private String byteReceived;
+        DatagramSocket ackSendingSocket;
+
+        public AckSendingProcess(String fullSenderIpAddress, String byteReceived) {
+            this.fullSenderIpAddress = fullSenderIpAddress;
+            this.byteReceived = byteReceived;
+            // initialise the socket to broadcast
+            try {
+                this.ackSendingSocket = new DatagramSocket();
+                Log.router(RoverManager.getInstance().getFullRoverId() + "NOTE: Sending will only begin when complete routing table has been populated\n");
+                Log.router(RoverManager.getInstance().getFullRoverId() + ": byte sending socket binded to port : " + ackSendingSocket.getLocalPort());
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.router(RoverManager.getInstance().getFullRoverId() + ": Failed! cannot initialise Datagram socket inside AckSendingProcess");
+            }
+        }
+
+        @Override
+        public void run()   {
+            System.out.println("AckSendingProcess(): entered");
+            // prepare the destination address of the packet
+            InetAddress destinationInetAddress = null;
+            String nextHopIp = getNextHopOfDestinationIp(fullSenderIpAddress);
+            if(nextHopIp == null)    {
+                System.err.println("AckSendingProcess(): run(): nextHopIp is null");
+                System.exit(1);
+            }
+
+            try {
+                destinationInetAddress = InetAddress.getByName(nextHopIp);
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+                Log.router(RoverManager.getInstance().getFullRoverId() + ": Unknown host Exception inside AckSendingProcess");
+            }
+
+            // prepare a new packet with some new data each time and send
+            String srcAddress = RoverManager.getInstance().getFullRoverId();
+            // create a new packet
+            NewPacket mPacket = new NewPacket("0", byteReceived, byteReceived, srcAddress, fullSenderIpAddress);
+            System.out.println("New ack packet created : " + mPacket);
+            // put end of data, put data, ack, src and destination address
+            byte[] buff;
+            buff = mPacket.toByteArray();
+            try {
+                DatagramPacket packet = new DatagramPacket(buff, buff.length, destinationInetAddress, ACK_PORT);
+                ackSendingSocket.send(packet);
+                System.out.println("AckSendingProcess(): ack sent back!");
+                control.lastAckSent = byteReceived;
+                System.out.println("AckSendingProcess(): packet sent to :" + mPacket.getDestinationAddress());
+                System.out.println("AckSendingProcess(): packet sent from :" + mPacket.getSrcAddress());
+                System.out.println("AckSendingProcess(): packet data :" + mPacket.getData());
+                System.out.println("AckSendingProcess(): packet ack :" + mPacket.getAck());
+                System.out.println("AckSendingProcess(): proceedSinceAckReceived set to false");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.router(RoverManager.getInstance().getFullRoverId() + "AckSendingProcess(): Something went wrong while sending...");
+            }
+            Log.router(RoverManager.getInstance().getFullRoverId() + "AckSendingProcess(): Stop sending broadcast packets");
+        }
+    }
+
+    /**
+     * A thread to receive ack packets over the network
+     */
+    public class AckReceivingProcess extends Thread {
+        DatagramSocket ackReceivingSocket;
+
+        public AckReceivingProcess() {
+            // initialise the socket to broadcast
+            try {
+                this.ackReceivingSocket = new DatagramSocket(ACK_PORT);
+                Log.router(RoverManager.getInstance().getFullRoverId() + "AckReceivingProcess(): byte receiving socket binded to port : " + ackReceivingSocket.getLocalPort());
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.router(RoverManager.getInstance().getFullRoverId() + ": Failed! cannot initialise Datagram socket inside AckReceivingProcess");
+            }
+        }
+
+        @Override
+        public void run()   {
+            while (true) {
+                try {
+                    byte[] buffer = new byte[11];
+                    DatagramPacket incomingPacket = new DatagramPacket(buffer, buffer.length);
+                    // read the incoming data into the packet
+                    ackReceivingSocket.receive(incomingPacket);
+                    System.out.println("Received some ack...");
+                    // check if the destination address of the packet equals the current rover's address
+                    String fullDestinationAddress = Helper.parseSenderAddress(String.valueOf(Integer.parseInt(
+                            Helper.BitwiseManager.convertByteToHex(incomingPacket.getData()[9]), 16)));
+                    String fullSenderIpAddress = Helper.parseSenderAddress(String.valueOf(Integer.parseInt(
+                            Helper.BitwiseManager.convertByteToHex(incomingPacket.getData()[5]), 16)));
+                    String endOfData = Helper.parseSenderAddress(String.valueOf(Integer.parseInt(
+                            Helper.BitwiseManager.convertByteToHex(incomingPacket.getData()[0]), 16)));
+                    String data = Helper.parseSenderAddress(String.valueOf(Integer.parseInt(
+                            Helper.BitwiseManager.convertByteToHex(incomingPacket.getData()[1]), 16)));
+                    String ack = Helper.parseSenderAddress(String.valueOf(Integer.parseInt(
+                            Helper.BitwiseManager.convertByteToHex(incomingPacket.getData()[2]), 16)));
+
+                    System.out.println("AckReceivingProcess(): received ack: " + ack);
+                    // check if the destination address of the ack packet is this current rover
+                    if(fullDestinationAddress.equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
+                        // cool, reflect this ack in the control class
+                        System.out.println("AckReceivingProcess(): received destinationAddress: " + fullDestinationAddress + " : destined to reach me");
+                        control.ackReceived = true;
+                    }else   {
+                        System.out.println("AckReceivingProcess(): received destinationAddress: " + fullDestinationAddress + " : not sent for me");
+                    }
+
+                    // avoid processing packet if the sender is myself
+                    if(fullSenderIpAddress.equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
+                        System.out.println("AckReceivingProcess(): received fullSenderIpAddress : " + fullSenderIpAddress + ", this is me, skipping");
+                        continue;
+                    }else   {
+                        System.out.println("AckReceivingProcess(): received fullSenderIpAddress : " + fullSenderIpAddress + ", a new sender, processing...");
+                    }
+
+                    NewPacket receivedPacket = new NewPacket(endOfData, data, ack, fullSenderIpAddress, fullDestinationAddress);
+                    System.out.println("AckReceivingProcess(): received packet: " + receivedPacket);
+
+                    byte parsedData = incomingPacket.getData()[1];
+                    System.out.println("AckReceivingProcess(): run(): data: " + data + ", byte parsedData: " + parsedData);
+                    // check if this sender exists in the connected hosts hashmap
+                    if(RoverManager.getInstance().getConnectedHostsMap().containsKey(fullSenderIpAddress))  {
+                        System.out.println("AckReceivingProcess(): run(): found connected host: " + fullSenderIpAddress + ", with byte length: " + RoverManager.getInstance().getConnectedHostsMap().get(fullSenderIpAddress).size());
+                    }else   {
+                        // add the host to the connected hosts list with an empty byte array
+                        RoverManager.getInstance().getConnectedHostsMap().put(fullSenderIpAddress, new ArrayList<>());
+                        System.out.println("AckReceivingProcess(): run(): added new host: " + fullSenderIpAddress);
+                    }
+                    // check if this the packet with endOfData flag set
+
+                    if(endOfData.matches("1*")) {
+                        // just mark the end of the reception on the connected host
+                        ArrayList<Byte> completedFile = RoverManager.getInstance().getConnectedHostsMap().get(fullSenderIpAddress);
+                        // remove the host from the connected hist list
+                        RoverManager.getInstance().getConnectedHostsMap().remove(fullSenderIpAddress);
+                        // print the completed file
+                        System.out.println("AckReceivingProcess(): run(): fileCompleted : " + completedFile);
+                    }else   {
+                        // since the endOfData is not set, this file has some data so
+                        // add it to the corresponding byte list of the host
+                        RoverManager.getInstance().getConnectedHostsMap().get(fullSenderIpAddress).add(parsedData);
+                        System.out.println("AckReceivingProcess(): run(): added data to host: " + fullSenderIpAddress + ", byte: " + parsedData);
+                    }
+
+                    // now since we have taken care of the complete byte, this is the right time
+                    // to send an acknowledgement back to the original sender, do it now
+                    RoverManager.getInstance()
+                            .getMyThreadPoolExecutorService()
+                            .getService()
+                            .execute(new AckSendingProcess(fullSenderIpAddress, Byte.toString(parsedData)));
+
+//                    RoverManager.getInstance().getConnectedHostsMap().put(fullDestinationAddress, incomingPacket.getAddress().toString().substring(1));
+//                System.out.println("mapped: " + RoverManager.getInstance().getIpAddressMap());
+//                System.out.println("Packet from : " + incomingPacket.getAddress().toString() + ", SocketAddress: " + incomingPacket.getSocketAddress() + ", Port: " + incomingPacket.getPort());
+                    // dispatch this client socket to a worker thread
+
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    break;
+                }
+            }
+            Log.router(RoverManager.getInstance().getFullRoverId() + "AckReceivingProcess(): Stop sending broadcast packets");
         }
     }
 
@@ -499,7 +747,6 @@ class ParseReceivedPacketProcess extends Thread {
             if(mSender.equalsIgnoreCase(RoverManager.getInstance().getRoverId())){
                 return;
             }
-
             // update the access time of the sender in the timeout table
             RoverManager.getInstance()
                     .getTimeoutManagementProcess()

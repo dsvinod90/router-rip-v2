@@ -13,7 +13,6 @@
  */
 import java.io.IOException;
 import java.net.*;
-import java.sql.SQLOutput;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -110,6 +109,7 @@ class BroadcastingProcess extends Thread {
     RIPPacket mRIPPacket;
     String multicastIp;
     private static int ROUTER_PORT;
+
     public BroadcastingProcess(String multicastIp, String port) {
         mRIPPacket = RoverManager.getInstance().getmRIPPacket();
         ROUTER_PORT = Integer.parseInt(port);
@@ -276,21 +276,26 @@ class MainRouterProcess extends Thread{
                             Helper.BitwiseManager.convertByteToHex(incomingPacket.getData()[0]), 16));
                     String data = String.valueOf(Integer.parseInt(
                             Helper.BitwiseManager.convertByteToHex(incomingPacket.getData()[1]), 16));
+                    String ack = String.valueOf(Integer.parseInt(
+                            Helper.BitwiseManager.convertByteToHex(incomingPacket.getData()[2]), 16));
+
+                    NewPacket receivedPacket = new NewPacket(endOfData, data, ack, fullSenderIpAddress, fullDestinationAddress);
 
 //                    System.out.println("ByteReceivingProcess(): received endOfData: " + endOfData);
 //                    System.out.println("ByteReceivingProcess(): received data: " + data);
 
                     // check if this packet was destined to me, if yes then proceed else forward it...
 //                    System.out.println("ByteReceivingProcess(): received ack: " + ack);
-                    if(fullDestinationAddress.equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
-//                        System.out.println("ByteReceivingProcess(): received destinationAddress: " + fullDestinationAddress + " : destined to reach me");
-                    }else   {
-
-//                        System.out.println("ByteReceivingProcess(): received destinationAddress: " + fullDestinationAddress + " : not sent for me");
+                    if(!fullDestinationAddress.equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
+                        // not destined to reach me, hence lets just forward it
+                        new ByteSendingProcess(fullDestinationAddress, null, receivedPacket).start();
+                        continue;
                     }
 
+                    // if the above condition was not met, this means this packet is destined to reach me
                     // check if this incoming byte has already been acknowledged in the last ack
                     if(data.equalsIgnoreCase(control.lastAckSent)) {
+                        // if already acked, then ack again
 //                        System.out.println("ByteReceivingProcess(): received data looks redundant as last ack: " + control.lastAckSent + " - skipping reception...");
                         RoverManager.getInstance()
                                 .getMyThreadPoolExecutorService()
@@ -307,9 +312,8 @@ class MainRouterProcess extends Thread{
 //                        System.out.println("ByteReceivingProcess(): received fullSenderIpAddress : " + fullSenderIpAddress + ", a new sender, processing...");
                     }
 
-//                    NewPacket receivedPacket = new NewPacket(endOfData, data, ack, fullSenderIpAddress, fullDestinationAddress);
-//                    System.out.println("ByteReceivingProcess(): received packet: " + receivedPacket);
 
+//                    System.out.println("ByteReceivingProcess(): received packet: " + receivedPacket);
 
                     byte parsedData = incomingPacket.getData()[1];
 //                    System.out.println("ByteReceivingProcess(): run(): data: " + data + ", byte parsedData: " + parsedData);
@@ -445,6 +449,7 @@ class MainRouterProcess extends Thread{
         // in the packet. Sender sends only if ackReceived is true
         public volatile boolean ackReceived = true;
         public volatile String lastAckSent;
+        public volatile int lastAckLength;
     }
 
     final Control control = new Control();
@@ -467,7 +472,7 @@ class MainRouterProcess extends Thread{
          */
         public ByteSendingProcess(String destinationIpString, String filename, NewPacket singlePacket) {
             if(filename == null && singlePacket != null)    {
-                new ByteForwardingProcess(destinationIpString, singlePacket).start();
+                new PacketForwardingProcess(destinationIpString, singlePacket, false).start();
                 System.out.println("ByteSendingProcess(): handing over control to forwarding process");
                 return;
             }
@@ -596,19 +601,23 @@ class MainRouterProcess extends Thread{
     /**
      * A thread to send bytes of the given file over the network
      */
-    public class ByteForwardingProcess extends Thread {
+    public class PacketForwardingProcess extends Thread {
+        private boolean isAck = false;
         private String destinationIpString;
         private String filename;
         DatagramSocket byteSendingSocket;
         NewPacket singlePacket;
 
         /**
-         * If filename==null and singleByte!=null this means that this request
-         * is coming from an intermediate router
+         * This thread comes into play when the packet in consideration is
+         * passing through an intermediate router, in this case the rover
+         * just simple forwards the packet to the destination hep count
+         * as mentioned in his own routing table
          * @param destinationIpString
          * @param singlePacket
          */
-        public ByteForwardingProcess(String destinationIpString, NewPacket singlePacket) {
+        public PacketForwardingProcess(String destinationIpString, NewPacket singlePacket, boolean isAck) {
+            this.isAck = isAck;
             this.singlePacket = singlePacket;
             this.destinationIpString = destinationIpString;
             // initialise the socket to broadcast
@@ -617,19 +626,20 @@ class MainRouterProcess extends Thread{
                 Log.router(RoverManager.getInstance().getFullRoverId() + ": byte sending socket binded to port : " + byteSendingSocket.getLocalPort());
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.router(RoverManager.getInstance().getFullRoverId() + ": Failed! cannot initialise Datagram socket inside ByteForwardingProcess");
+                Log.router(RoverManager.getInstance().getFullRoverId() + ": Failed! cannot initialise Datagram socket inside PacketForwardingProcess");
             }
         }
 
         @Override
         public void run()   {
-            System.out.println("forwarding...");
-//            System.out.println("ByteForwardingProcess(): entered");
+            if(isAck)   System.out.println("forwarding ACK...");
+            else    System.out.println("forwarding file chunk...");
+
             // prepare the destination address of the packet
             InetAddress destinationInetAddress = null;
             String nextHopIp = getNextHopOfDestinationIp(destinationIpString);
             if(nextHopIp == null)    {
-                System.err.println("ByteForwardingProcess(): run(): nextHopIp is null");
+                System.err.println("PacketForwardingProcess(): run(): nextHopIp is null: The destination Ip does not exist in my routing table");
                 System.exit(1);
             }
             try {
@@ -639,11 +649,13 @@ class MainRouterProcess extends Thread{
                 Log.router(RoverManager.getInstance().getFullRoverId() + ": Unknown host Exception inside BroadcastingProcess");
             }
 
-//            System.out.println("ByteForwardingProcess(): FileManager: file is open for reading");
+//            System.out.println("PacketForwardingProcess(): FileManager: file is open for reading");
             // prepare a new packet with some new data each time and send
+            int port = isAck? ACK_PORT : FILE_TRANSFER_PORT;
+
             boolean allBytesSent = false;
             while(!allBytesSent) {
-//                    System.out.println("ByteForwardingProcess(): proceedSinceAckReceived : " + control.ackReceived);
+//                    System.out.println("PacketForwardingProcess(): proceedSinceAckReceived : " + control.ackReceived);
                 // create a new packet
                 NewPacket mPacket = singlePacket;
 //                    System.out.println("New packet created : " + mPacket);
@@ -651,23 +663,22 @@ class MainRouterProcess extends Thread{
                 byte[] buff;
                 buff = mPacket.toByteArray();
                 try {
-                    DatagramPacket packet = new DatagramPacket(buff, buff.length, destinationInetAddress, FILE_TRANSFER_PORT);
+                    DatagramPacket packet = new DatagramPacket(buff, buff.length, destinationInetAddress, port);
                     byteSendingSocket.send(packet);
-                    System.out.println("ByteForwardingProcess(): packet sent to public address :" + destinationInetAddress.getHostAddress());
-                    System.out.println("ByteForwardingProcess(): packet sent to internal address :" + mPacket.getDestinationAddress());
-                    System.out.println("ByteForwardingProcess(): packet sent from :" + mPacket.getSrcAddress());
-                    System.out.println("ByteForwardingProcess(): packet endOfData :" + mPacket.getEndOfData());
-                    System.out.println("ByteForwardingProcess(): packet data :" + mPacket.getData());
-                    System.out.println("ByteForwardingProcess(): packet ack :" + mPacket.getAck());
+                    /*System.out.println("PacketForwardingProcess(): packet sent to public address :" + destinationInetAddress.getHostAddress());
+                    System.out.println("PacketForwardingProcess(): packet sent to internal address :" + mPacket.getDestinationAddress());
+                    System.out.println("PacketForwardingProcess(): packet sent from :" + mPacket.getSrcAddress());
+                    System.out.println("PacketForwardingProcess(): packet endOfData :" + mPacket.getEndOfData());
+                    System.out.println("PacketForwardingProcess(): packet data :" + mPacket.getData());
+                    System.out.println("PacketForwardingProcess(): packet ack :" + mPacket.getAck());*/
                     allBytesSent = true;
-
                 } catch (IOException e) {
                     e.printStackTrace();
-                    Log.router(RoverManager.getInstance().getFullRoverId() + "ByteForwardingProcess(): Something went wrong while sending...");
+                    Log.router(RoverManager.getInstance().getFullRoverId() + "PacketForwardingProcess(): Something went wrong while sending...");
                     break;
                 }
             }
-            System.out.println("ByteForwardingProcess(): forwarding complete!");
+            System.out.println("PacketForwardingProcess(): forwarding complete!");
         }
     }
 
@@ -805,9 +816,11 @@ class MainRouterProcess extends Thread{
 //                    System.out.println("AckReceivingProcess(): received ack: " + ack);
                     // check if the destination address of the ack packet is this current rover
                     if(fullDestinationAddress.equalsIgnoreCase(RoverManager.getInstance().getFullRoverId()))    {
-                        // cool, reflect this ack in the control class
+                        // cool, this ack is mine reflect this ack in the control class
 //                        System.out.println("AckReceivingProcess(): received destinationAddress: " + fullDestinationAddress + " : destined to reach me");
                     }else   {
+                        // ack is not mine, just forward
+                        new PacketForwardingProcess(fullDestinationAddress, new NewPacket(endOfData, data, ack, fullSenderIpAddress, fullDestinationAddress), true);
 //                        System.out.println("AckReceivingProcess(): received destinationAddress: " + fullDestinationAddress + " : not sent for me");
                     }
 

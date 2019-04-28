@@ -34,7 +34,7 @@ public class FileManager {
         try {
             this.byteCounter = -1;
             this.byteLimit = reader.available();
-            System.out.println("byteLimit set to " + byteLimit);
+//            System.out.println("byteLimit set to " + byteLimit);
         } catch (IOException e) {
             openSuccess = false;
             e.printStackTrace();
@@ -46,7 +46,7 @@ public class FileManager {
         int readResult = -1;
         mByteArray = new byte[0];
         try {
-            System.out.println("mByteArray(): available bytes: " + reader.available());
+//            System.out.println("mByteArray(): available bytes: " + reader.available());
             mByteArray = new byte[reader.available()];
         } catch (IOException e) {
             openSuccess = false;
@@ -57,9 +57,9 @@ public class FileManager {
 
         try {
             if((readResult = reader.read(mByteArray, 0, mByteArray.length)) != -1)    {
-                System.out.println("read something!\n");
+//                System.out.println("read something!\n");
                 for(int i = 0; i < mByteArray.length; i++) {
-                    System.out.print(mByteArray[i] + ", ");
+//                    System.out.print(mByteArray[i] + ", ");
                 }
             }
         } catch (IOException e) {
@@ -68,7 +68,7 @@ public class FileManager {
             System.err.println("cannot read from reader");
         }
 
-        System.out.println("\nmByteArray(): finished and ready");
+//        System.out.println("\nmByteArray(): finished and ready");
 
         return openSuccess;
     }
@@ -103,9 +103,9 @@ public class FileManager {
     public static void main(String[] args) {
         FileManager fileManager = new FileManager("output.txt");
         if(fileManager.openFile()) {
-            System.out.println();
+//            System.out.println();
             while(fileManager.hasNextByte())    {
-                System.out.print("next byte: " + fileManager.getByte() + "\n");
+//                System.out.print("next byte: " + fileManager.getByte() + "\n");
             }
         }
     }

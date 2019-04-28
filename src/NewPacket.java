@@ -93,11 +93,11 @@ public class NewPacket {
         // loop over each header
         int i = 0;
         arr[i++] = (byte)Integer.parseInt(endOfData);
-        System.out.println("endOfData: " + endOfData + ": " + arr[i-1]);
+//        System.out.println("endOfData: " + endOfData + ": " + arr[i-1]);
         arr[i++] = (byte)Integer.parseInt(data);
-        System.out.println("data: " + data + ": " + arr[i-1]);
+//        System.out.println("data: " + data + ": " + arr[i-1]);
         arr[i++] = (byte)Integer.parseInt(ack);
-        System.out.println("ack: " + ack + ": " + arr[i-1]);
+//        System.out.println("ack: " + ack + ": " + arr[i-1]);
 
         // add src address
         String IpAddress = srcAddress;
@@ -107,7 +107,7 @@ public class NewPacket {
             arr[i++] = Helper.BitwiseManager.convertIntegerToByte(s[x]);
         }
 
-        System.out.println("srcAddress: " + srcAddress + ": " + arr[i-4] + "." + arr[i-3] + "." + arr[i-2] + "." + arr[i-1]);
+//        System.out.println("srcAddress: " + srcAddress + ": " + arr[i-4] + "." + arr[i-3] + "." + arr[i-2] + "." + arr[i-1]);
 
         // add destination address
         String destIpAddress = destinationAddress;
@@ -116,7 +116,7 @@ public class NewPacket {
         for(int x = 0; x < 4; x++)  {
             arr[i++] = Helper.BitwiseManager.convertIntegerToByte(destinationString[x]);
         }
-        System.out.println("destAddress: " + destinationAddress+ ": " + arr[i-4] + "." + arr[i-3] + "." + arr[i-2] + "." + arr[i-1]);
+//        System.out.println("destAddress: " + destinationAddress+ ": " + arr[i-4] + "." + arr[i-3] + "." + arr[i-2] + "." + arr[i-1]);
         // return the byte array
         return arr;
     }
